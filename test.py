@@ -1,68 +1,44 @@
-# crypto_bot.py
-import os
-import json
-import websocket
-from dotenv import load_dotenv
-from binance import BinanceSocketManager
-from binance.client import Client
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Float, DateTime
+# importing pandas as pd
+import pandas as pd
+import numpy as np
+import operator
 
-# load environment variables
-load_dotenv()
+# Creating row index values for our data frame
+ind = pd.date_range('01 / 01 / 2000', periods=5, freq='12H')
 
-# create engine
-engine = create_engine(os.getenv("DB"))
+# Creating a dataframe with 4 columns
+# using "ind" as the index for our dataframe
+df = pd.DataFrame({"A": [1, 2, 3, 4, 5],
+				"B": [10, 20, 30, 40, 50],
+				"C": [11, 22, 33, 44, 55],
+				"D": [12, 24, 51, 36, 2]},
+				index=ind)
 
-# create session
-Session = sessionmaker(bind=engine)
-session = Session()
+# print(df["C"] > 34, df["C"].shift() <= 34)
+# print('----------------------------------')
+# print(df["C"] , df["C"].shift())
 
-# create base
-Base = declarative_base()
+# df['X'] = np.where(np.logical_and((df['RCSI'] > 34), (df['C'].shift() <= 34)), 1, 0)
 
+# print(df['X'])
 
-# create table
-class Crypto(Base):
-    __tablename__ = "crypto"
-    id = Column(Integer, primary_key=True)
-    symbol = Column(String)
-    price = Column(Float)
-    time = Column(DateTime)
+students = {}
+math = students["001"] = 1
+science = students["002"] = 2
+art = students["003"] = 3
+social_science = students["004"] = 4
+new_ma_val = max(students.items(), key=operator.itemgetter(1))[0]
 
+print(new_ma_val, students[new_ma_val])
 
-# create table if it does not exist
-Base.metadata.create_all(engine)
+for i in range(10):
+	with open('output-btc.txt', 'w') as f:
+		f.writelines(str(i))
 
-# create client
-client = Client(os.getenv("BINANCE_API_KEY"), os.getenv("BINANCE_API_SECRET"))
-
-# create socket manager
-bm = BinanceSocketManager(client)
-
-
-# process message
-def process_message(msg):
-    print(msg)
-    if msg["e"] == "error":
-        print(msg["m"])
-        return
-    symbol = msg["s"]
-    price = float(msg["c"])
-    time = msg["E"]
-    crypto = Crypto(symbol=symbol, price=price, time=time)
-    session.add(crypto)
-    session.commit()
-    session.close()  # close session after each message
-
-
-# create socket
-socket = bm.symbol_ticker_socket("BTCUSDT")
-
-# start socket
-bm.start()
-
-# close socket
-bm.close()
+myfile = open('xyz.txt', 'w')
+for line in range(10):
+	rs = str(line) +''+ 'i'
+	myfile.write("%s\n" % rs)
+    
+myfile.close()
+    
