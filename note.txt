@@ -1,0 +1,32 @@
+-> Thay đổi font chữ ở tất cả các trang.
+hight light cái tab lựa chọn
+(trang chủ)
+lựa chọn ngôn ngữ góc phải. thay đổi ngôn ngữ và hiện thị quốc kỳ theo ngôn ngữ tương ứng ở icon
+chức năng thay đổi anh trang trủ (admin)
+(about us)
+network: thay đổi kích thước ảnh phù hợp ko để thừa nhiều khoảng trống
+client: cả ảnh cả text.
+award: dịch chuyển Asialaw Profile 2020 + Asialaw Profiles 2019. sang ngang.\
+(key people)
+sửa lại font chữ
+đồng bộ hóa tiếng việt
+khi kích vào tiếng việt, trung, nhật phải hiển thị tab key people
+
+-> ảnh thêm viền xanh trắng,
+Định dạng lại font chữ tên
+(thông tin chi tiết) Thay đổi bài viết, bố cục lại giao diện bài viết,)
+nếu có cv sẽ hiển thị lên
+sắp xếp theo yêu cầu.
+in nghiêng chức danh.
+(practice)
+không hiện thị mục đã chọn ở Our Practices,.
+-> news
+bỏ You May Also Like
+chuyển Previous article lên bên phải
+share và tags icon. tăng kích thước lên.
+
+(Careers)
+link qua màn yêu tuyển dụng.
+(contact)
+font chữ to ra
+thêm hình ảnh 3 nơi.
