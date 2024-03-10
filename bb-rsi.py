@@ -30,7 +30,7 @@ def load_data_file(symbol):
     # e.g. client.get_historical_klines(symbol='ETHUSDTUSDT', '1m', starttime)
     # starttime = '1 Dec, 2017', '1 Jan, 2018'  for last month of 2017
     # e.g. client.get_historical_klines(symbol='BTCUSDT', '1h', '1 Dec, 2017', '1 Jan, 2018')
-    starttime = '1 day ago UTC'  # to start for 1 day ago
+    starttime = '30 day ago UTC'  # to start for 1 day ago
     interval = '5m'
     bars = client.get_historical_klines(symbol, interval, starttime)
 

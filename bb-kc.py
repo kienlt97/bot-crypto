@@ -7,6 +7,9 @@ from math import floor
 from termcolor import colored as cl
 import os
 import matplotlib.dates as mpl_dates
+from binance.client import Client
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
 
 plt.style.use('fivethirtyeight')
 plt.rcParams['figure.figsize'] = (20,10)
@@ -14,8 +17,33 @@ plt.rcParams['figure.figsize'] = (20,10)
 # EXTRACTING STOCK DATA
 # EXTRACTING STOCK DATA
 
-
 def get_historical_data(symbol):
+    # valid intervals - 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w, 1M
+    # request historical candle (or klines) data using timestamp from above, interval either every min, hr, day or month
+    # starttime = '30 minutes ago UTC' for last 30 mins time
+    # e.g. client.get_historical_klines(symbol='ETHUSDTUSDT', '1m', starttime)
+    # starttime = '1 Dec, 2017', '1 Jan, 2018'  for last month of 2017
+    # e.g. client.get_historical_klines(symbol='BTCUSDT', '1h', '1 Dec, 2017', '1 Jan, 2018')
+    starttime = '30 day ago UTC'  # to start for 1 day ago
+    interval = '5m'
+    bars = client.get_historical_klines(symbol, interval, starttime)
+
+    for line in bars:        # Keep only first 5 columns, 'date' 'open' 'high' 'low' 'close'
+        del line[6:]
+
+    df = pd.DataFrame(bars, columns=['date', 'open', 'high', 'low', 'close','volume']) #  2 dimensional tabular data
+    # df['date'] = pd.to_datetime(df['date'])
+    # df['date'] = df['date'].apply(mpl_dates.date2num)
+
+    df['open'] = pd.to_numeric(df['open'], errors='coerce').fillna(0).astype(float)
+    df['high'] =  pd.to_numeric(df['high'], errors='coerce').fillna(0).astype(float)
+    df['low'] =  pd.to_numeric(df['low'], errors='coerce').fillna(0).astype(float)
+    df['close'] =  pd.to_numeric(df['close'], errors='coerce').fillna(0).astype(float)
+    df['volume'] =  pd.to_numeric(df['volume'], errors='coerce').fillna(0).astype(float)
+
+    return df
+
+def get_historical_data1(symbol):
     #  Create output file name
     daily_file_name = '{}_1d_2m.csv'.format(symbol)
     daily_full_path = os.path.join('D:\\New folder\\Bollinger bands\\', daily_file_name)
@@ -42,10 +70,12 @@ def get_bb(df, lookback):
     upper_bb = sma(df, lookback) + std * 2
     lower_bb = sma(df, lookback) - std * 2
     middle_bb = sma(df, lookback)
+    
     return upper_bb, middle_bb, lower_bb
 
 # KELTNER CHANNEL CALCULATION
 def get_kc(high, low, close, kc_lookback, multiplier, atr_lookback):
+
     tr1 = pd.DataFrame(high - low)
     tr2 = pd.DataFrame(abs(high - close.shift()))
     tr3 = pd.DataFrame(abs(low - close.shift()))
@@ -92,8 +122,9 @@ def bb_kc_rsi_strategy(prices, upper_bb, lower_bb, kc_upper, kc_lower, rsi):
     kc_lower = kc_lower.to_numpy()
     upper_bb = upper_bb.to_numpy()
     kc_upper = kc_upper.to_numpy()
-    rsi = rsi.to_numpy()
+    prices = prices.to_numpy()
 
+    rsi = rsi.to_numpy()
     for i in range(len(prices)):
         if lower_bb[i] < kc_lower[i] and upper_bb[i] > kc_upper[i] and rsi[i] < 30:
             if signal != 1:
@@ -122,13 +153,58 @@ def bb_kc_rsi_strategy(prices, upper_bb, lower_bb, kc_upper, kc_lower, rsi):
     return buy_price, sell_price, bb_kc_rsi_signal
 
 
+def plot_graph(symbol, df, entry_prices, exit_prices):
+    fig = make_subplots(rows=3, cols=1, subplot_titles=['Close + BB','RSI','STC'])
+    
+    df.set_index('date', inplace=True)
+    df.index = pd.to_datetime(df.index, unit='ms') # index set to first column = date_and_time
+    
+    #  Plot close price
+    fig.add_trace(go.Line(x = df.index, y = np.array(df['close'], dtype=np.float32), line=dict(color='blue', width=1), name='Close'), row = 1, col = 1)
+
+    #  Plot bollinger bands
+    bb_high = df['upper_bb'].astype(float).to_numpy()
+    bb_mid = df['middle_bb'].astype(float).to_numpy()
+    bb_low = df['lower_bb'].astype(float).to_numpy()
+    fig.add_trace(go.Line(x = df.index, y = bb_high, line=dict(color='green', width=1), name='BB High'), row = 1, col = 1)
+    fig.add_trace(go.Line(x = df.index, y = bb_mid, line=dict(color='#ffd866', width=1), name='BB Mid'), row = 1, col = 1)
+    fig.add_trace(go.Line(x = df.index, y = bb_low, line=dict(color='red', width=1), name='BB Low'), row = 1, col = 1)
+    
+    #  Plot RSI
+    fig.add_trace(go.Line(x = df.index, y = np.array(df['rsi_14'], dtype=np.float32) , line=dict(color='blue', width=1), name='RSI'), row = 2, col = 1)
+
+    #  Add buy and sell indicators
+    fig.add_trace(go.Scatter(x=df.index, y=np.array(entry_prices, dtype=np.float32), marker_symbol='arrow-up', marker=dict(
+        color='green',size=15
+    ),mode='markers',name='Buy'))
+    fig.add_trace(go.Scatter(x=df.index, y=np.array(exit_prices, dtype=np.float32), marker_symbol='arrow-down', marker=dict(
+        color='red',size=15
+    ),mode='markers',name='Sell'))
+        
+    fig.update_layout(
+        title={'text':f'{symbol} with BB-RSI-STC', 'x':0.5},
+        autosize=False,
+        width=1500,height=3000)
+    fig.update_yaxes(range=[0,1000000000],secondary_y=True)
+    fig.update_yaxes(visible=True, secondary_y=True)  #hide range slider
+
+    fig.show()
+
 # BACKTESTING
 
 if __name__ == '__main__':
 
-    symbol = 'ETH-USD'
+    symbol = 'ETHUSDT'   # Change symbol here e.g. BTCUSDT, BNBBTC, ETHUSDT, NEOBTC
+    api_key = 'lwaoJYVsMOYVNIBXma32k3PoNzhB5kJ7A6TcRv6cQEqPUTEBMBZHPWiFKZ7bIRqM'     # passkey (saved in bashrc for linux)
+    api_secret = 'aDpaIwHf9GVJBiI36aUye5Y2zd1LKCPAUjKIMD9N5ZhzJBqNOJN6Jy09Waw7HBjO' # secret (saved in bashrc for linux)
+
+    client = Client(api_key, api_secret, tld ='us')
+    print("Using Binance TestNet Server")
+
+    # symbol = 'ETH-USD'
 
     df = get_historical_data(symbol)
+    # print(df)
     df['upper_bb'], df['middle_bb'], df['lower_bb'] = get_bb(df['close'], 20)
     df['kc_middle'], df['kc_upper'], df['kc_lower'] = get_kc(df['high'], df['low'], df['close'], 20, 2, 10)
     
@@ -138,7 +214,7 @@ if __name__ == '__main__':
     # print(df)
     
     buy_price, sell_price, bb_kc_rsi_signal = bb_kc_rsi_strategy(df['close'], df['upper_bb'], df['lower_bb'], df['kc_upper'], df['kc_lower'], df['rsi_14'])
-    
+    plot_graph(symbol, df, buy_price, sell_price)
     # POSITION
     position = []
     for i in range(len(bb_kc_rsi_signal)):
@@ -167,6 +243,7 @@ if __name__ == '__main__':
     position = pd.DataFrame(position).rename(columns ={0:'bb_kc_rsi_position'}).set_index(df.index)
     frames = [close_price, kc_upper, kc_lower, upper_bb, lower_bb, rsi, bb_kc_rsi_signal, position]
     strategy = pd.concat(frames, join = 'inner', axis= 1)
+    print(strategy)
 
     df_ret = pd.DataFrame(np.diff(df['close'])).rename(columns = {0:'returns'})
     bb_kc_rsi_strategy_ret = []
@@ -180,7 +257,7 @@ if __name__ == '__main__':
         bb_kc_rsi_strategy_ret.append(returns)
         
     bb_kc_rsi_strategy_ret_df = pd.DataFrame(bb_kc_rsi_strategy_ret).rename(columns = {0:'bb_kc_rsi_returns'})
-    investment_value = 100000
+    investment_value = 300
     bb_kc_rsi_investment_ret = []
     bb_kc_rsi_returns = bb_kc_rsi_strategy_ret_df['bb_kc_rsi_returns'].to_numpy()
 
@@ -192,5 +269,5 @@ if __name__ == '__main__':
     bb_kc_rsi_investment_ret_df = pd.DataFrame(bb_kc_rsi_investment_ret).rename(columns = {0:'investment_returns'})
     total_investment_ret = round(sum(bb_kc_rsi_investment_ret_df['investment_returns']), 2)
     profit_percentage = floor((total_investment_ret/investment_value)*100)
-    print(cl('Profit gained from the BB KC RSI strategy by investing $100k in df : {}'.format(total_investment_ret), attrs = ['bold']))
+    print('Profit gained from the BB KC RSI strategy by investing $%s in df: %s' % (investment_value,total_investment_ret))
     print(cl('Profit percentage of the BB KC RSI strategy : {}%'.format(profit_percentage), attrs = ['bold']))
